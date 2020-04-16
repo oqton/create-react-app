@@ -1,5 +1,5 @@
 {
-  "name": "react-scripts",
+  "name": "@oqton/react-scripts",
   "version": "3.4.1",
   "description": "Configuration and scripts for Create React App.",
   "repository": {
