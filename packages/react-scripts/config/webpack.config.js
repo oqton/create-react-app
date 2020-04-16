@@ -8,7 +8,6 @@
 // @remove-on-eject-end
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const webpack = require('webpack');
 const resolve = require('resolve');
@@ -40,6 +39,8 @@ const postcssNormalize = require('postcss-normalize');
 
 const appPackageJson = require(paths.appPackageJson);
 
+const { useTypeScript, useServiceWorker, useLinter } = require('./custom');
+
 // Source maps are resource heavy and can cause out of memory issue for large source files.
 const shouldUseSourceMap = process.env.GENERATE_SOURCEMAP !== 'false';
 
@@ -56,9 +57,6 @@ const isExtendingEslintConfig = process.env.EXTEND_ESLINT === 'true';
 const imageInlineSizeLimit = parseInt(
   process.env.IMAGE_INLINE_SIZE_LIMIT || '10000'
 );
-
-// Check if TypeScript is setup
-const useTypeScript = fs.existsSync(paths.appTsConfig);
 
 // style files regexes
 const cssRegex = /\.css$/;
@@ -157,28 +155,31 @@ module.exports = function(webpackEnv) {
       : isEnvDevelopment && 'cheap-module-source-map',
     // These are the "entry points" to our application.
     // This means they will be the "root" imports that are included in JS bundle.
-    entry: isEnvDevelopment && !shouldUseReactRefresh ? [
-      // Include an alternative client for WebpackDevServer. A client's job is to
-      // connect to WebpackDevServer by a socket and get notified about changes.
-      // When you save a file, the client will either apply hot updates (in case
-      // of CSS changes), or refresh the page (in case of JS changes). When you
-      // make a syntax error, this client will display a syntax error overlay.
-      // Note: instead of the default WebpackDevServer client, we use a custom one
-      // to bring better experience for Create React App users. You can replace
-      // the line below with these two lines if you prefer the stock client:
-      //
-      // require.resolve('webpack-dev-server/client') + '?/',
-      // require.resolve('webpack/hot/dev-server'),
-      //
-      // When using the experimental react-refresh integration,
-      // the webpack plugin takes care of injecting the dev client for us.
-      webpackDevClientEntry,
-      // Finally, this is your app's code:
-      paths.appIndexJs,
-      // We include the app code last so that if there is a runtime error during
-      // initialization, it doesn't blow up the WebpackDevServer client, and
-      // changing JS code would still trigger a refresh.
-    ] : paths.appIndexJs,
+    entry:
+      isEnvDevelopment && !shouldUseReactRefresh
+        ? [
+            // Include an alternative client for WebpackDevServer. A client's job is to
+            // connect to WebpackDevServer by a socket and get notified about changes.
+            // When you save a file, the client will either apply hot updates (in case
+            // of CSS changes), or refresh the page (in case of JS changes). When you
+            // make a syntax error, this client will display a syntax error overlay.
+            // Note: instead of the default WebpackDevServer client, we use a custom one
+            // to bring better experience for Create React App users. You can replace
+            // the line below with these two lines if you prefer the stock client:
+            //
+            // require.resolve('webpack-dev-server/client') + '?/',
+            // require.resolve('webpack/hot/dev-server'),
+            //
+            // When using the experimental react-refresh integration,
+            // the webpack plugin takes care of injecting the dev client for us.
+            webpackDevClientEntry,
+            // Finally, this is your app's code:
+            paths.appIndexJs,
+            // We include the app code last so that if there is a runtime error during
+            // initialization, it doesn't blow up the WebpackDevServer client, and
+            // changing JS code would still trigger a refresh.
+          ]
+        : paths.appIndexJs,
     output: {
       // The build folder.
       path: isEnvProduction ? paths.appBuild : undefined,
@@ -306,9 +307,7 @@ module.exports = function(webpackEnv) {
       // https://github.com/facebook/create-react-app/issues/290
       // `web` extension prefixes have been added for better support
       // for React Native Web.
-      extensions: paths.moduleFileExtensions
-        .map(ext => `.${ext}`)
-        .filter(ext => useTypeScript || !ext.includes('ts')),
+      extensions: paths.moduleFileExtensions.map(ext => `.${ext}`),
       alias: {
         // Support React Native Web
         // https://www.smashingmagazine.com/2016/08/a-glimpse-into-the-future-with-react-native-for-web/
@@ -347,7 +346,7 @@ module.exports = function(webpackEnv) {
 
         // First, run the linter.
         // It's important to do this before Babel processes the JS.
-        {
+        useLinter && {
           test: /\.(js|mjs|jsx|ts|tsx)$/,
           enforce: 'pre',
           use: [
@@ -415,7 +414,7 @@ module.exports = function(webpackEnv) {
                     'babel-plugin-named-asset-import',
                     'babel-preset-react-app',
                     'react-dev-utils',
-                    'react-scripts',
+                    '@oqton/react-scripts',
                   ]
                 ),
                 // @remove-on-eject-end
@@ -472,7 +471,7 @@ module.exports = function(webpackEnv) {
                     'babel-plugin-named-asset-import',
                     'babel-preset-react-app',
                     'react-dev-utils',
-                    'react-scripts',
+                    '@oqton/react-scripts',
                   ]
                 ),
                 // @remove-on-eject-end
@@ -569,7 +568,7 @@ module.exports = function(webpackEnv) {
             // Make sure to add the new loader(s) before the "file" loader.
           ],
         },
-      ],
+      ].filter(Boolean),
     },
     plugins: [
       // Generates an `index.html` file with the <script> injected.
@@ -682,6 +681,7 @@ module.exports = function(webpackEnv) {
       // Generate a service worker script that will precache, and keep up to date,
       // the HTML & assets that are part of the webpack build.
       isEnvProduction &&
+        useServiceWorker &&
         new WorkboxWebpackPlugin.GenerateSW({
           clientsClaim: true,
           exclude: [/\.map$/, /asset-manifest\.json$/],
