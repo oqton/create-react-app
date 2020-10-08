@@ -7,7 +7,8 @@ const paths = require('./paths');
 const useTypeScript =
   process.env.DISABLE_TYPESCRIPT !== 'true' && fs.existsSync(paths.appTsConfig);
 
-const useServiceWorker = process.env.DISABLE_SW !== 'true';
+const useServiceWorker =
+  process.env.DISABLE_SW !== 'true' && fs.existsSync(paths.swSrc);
 
 const useLinter = process.env.DISABLE_ESLINT !== 'true';
 
